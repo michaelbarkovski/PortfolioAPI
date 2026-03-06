@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Asset, Price, Portfolio, Holding
 from decimal import Decimal
 from rest_framework import serializers
-from .models import Holding
+
 
 class AssetSerializer(serializers.ModelSerializer):
     class Meta:
@@ -20,12 +20,17 @@ class HoldingSerializer(serializers.ModelSerializer):
         fields = ["id", "portfolio", "asset", "weight"]
 
     def validate(self, data): #all weights should sum to 1 per portfolio 
+        request = self.context.get("request")
         portfolio = data.get("portfolio") or getattr(self.instance, "portfolio", None)
         weight = data.get("weight") if "weight" in data else getattr(self.instance, "weight", None)
 
         if portfolio is None or weight is None:
             return data
 
+        if request and portfolio.user != request.user: #ownership check
+            raise serializers.ValidationError("You can only add Holdings to your own portfolios") 
+        
+        #weight sum check
         existing = Holding.objects.filter(portfolio=portfolio)
         if self.instance is not None:
             existing = existing.exclude(id=self.instance.id)
@@ -41,6 +46,8 @@ class HoldingSerializer(serializers.ModelSerializer):
         return data
 
 class PortfolioSerializer(serializers.ModelSerializer):
+    user = serializers.ReadOnlyField(source="user.username")
+
     class Meta:
         model = Portfolio
-        fields = ["id", "name", "date_created"]
+        fields = ["id", "user", "name", "date_created"]

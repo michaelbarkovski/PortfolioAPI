@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from .models import Asset, Price, Portfolio, Holding
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework import status
@@ -24,9 +25,15 @@ class PriceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 class PortfolioViewSet(viewsets.ModelViewSet):
-    queryset = Portfolio.objects.all().order_by("-date_created")
+    #queryset = Portfolio.objects.all().order_by("-date_created")
     serializer_class = PortfolioSerializer
     permission_classes = [IsAuthenticated]
+
+    #restrict portfoloioviewset to the logged in user 
+    def get_queryset(self):
+        return Portfolio.objects.filter(user=self.request.user).order_by("-date_created")
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
     @action(detail=True, methods=["get"])
     def metrics(self, request, pk=None):
@@ -45,6 +52,9 @@ class PortfolioViewSet(viewsets.ModelViewSet):
             )
 
 class HoldingViewSet(viewsets.ModelViewSet):
-    queryset = Holding.objects.all().select_related("portfolio", "asset").order_by("portfolio__name", "asset__identifier")
+    #queryset = Holding.objects.all().select_related("portfolio", "asset").order_by("portfolio__name", "asset__identifier")
     serializer_class = HoldingSerializer
     permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return Holding.objects.filter(portfolio__user=self.request.user) #updated so that users only access their own holdings 

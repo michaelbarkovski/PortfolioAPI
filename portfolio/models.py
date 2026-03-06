@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 #Asset Model: Represents a financial instrument e.g. an apple stock, microsfot stock etc. 
 #This table stores general information about each asset. it does not store prices
@@ -46,6 +47,7 @@ does not store weights directly
 class Portfolio(models.Model):
     name = models.CharField(max_length=100) #portfolio name chosen by user 
     date_created = models.DateTimeField(auto_now_add=True) #automatically records when portfolio was created
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="portfolios") #map user to their own portfolios for authentication so a user can only see their own portfolios
 
     def __str__(self):
         return self.name
