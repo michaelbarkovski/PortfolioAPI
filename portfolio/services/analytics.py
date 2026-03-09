@@ -200,3 +200,62 @@ def benchmark_comparison(portfolio, benchmark_identifier, policy="intersection")
         "observations": int(len(merged)),
         "missing_data_policy": policy,
     }
+
+def calculate_rolling_metrics(portfolio, window=30, policy="intersection", risk_free_rate=0.02):
+    """
+    Compute rolling portfolio analytics over a moving window.
+    returns a list of date-based rolling metrics
+    """
+
+    if window < 2:
+        raise ValueError("Window must be at least 2.")
+
+    portfolio_df = compute_portfolio_returns(portfolio, policy=policy)
+
+    if portfolio_df.empty:
+        raise ValueError("Portfolio has insufficient return data.")
+
+    if len(portfolio_df) < window:
+        raise ValueError("Not enough return observations for the selected rolling window.")
+
+    # rolling mean and rolling standard deviation of daily returns
+    portfolio_df["rolling_mean_daily"] = portfolio_df["return"].rolling(window=window).mean()
+    portfolio_df["rolling_std_daily"] = portfolio_df["return"].rolling(window=window).std()
+
+    # convert daily measures into annualised measures
+    portfolio_df["rolling_annualised_return"] = (
+        portfolio_df["rolling_mean_daily"] * TRADING_DAYS_PER_YEAR
+    )
+    portfolio_df["rolling_annualised_volatility"] = (
+        portfolio_df["rolling_std_daily"] * np.sqrt(TRADING_DAYS_PER_YEAR)
+    )
+
+    # sharpe ratio for each rolling window
+    portfolio_df["rolling_sharpe_ratio"] = np.where(
+        portfolio_df["rolling_annualised_volatility"] != 0,
+        (portfolio_df["rolling_annualised_return"] - risk_free_rate)
+        / portfolio_df["rolling_annualised_volatility"],
+        0,
+    )
+
+    #remove rows before the first full window is available
+    portfolio_df = portfolio_df.dropna(
+        subset=[
+            "rolling_annualised_return",
+            "rolling_annualised_volatility",
+            "rolling_sharpe_ratio",
+        ]
+    )
+
+    results = []
+    for _, row in portfolio_df.iterrows():
+        results.append(
+            {
+                "date": row["date"],
+                "rolling_annualised_return": round(float(row["rolling_annualised_return"]), 6),
+                "rolling_annualised_volatility": round(float(row["rolling_annualised_volatility"]), 6),
+                "rolling_sharpe_ratio": round(float(row["rolling_sharpe_ratio"]), 6),
+            }
+        )
+
+    return results

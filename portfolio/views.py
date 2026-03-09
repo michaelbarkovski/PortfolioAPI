@@ -14,7 +14,12 @@ from .serializers import (
     HoldingSerializer,
     RegisterSerializer,
 )
-from portfolio.services.analytics import benchmark_comparison
+from portfolio.services.analytics import (
+    benchmark_comparison,
+    calculate_portfolio_metrics,
+    calculate_rolling_metrics,
+
+)
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 class AssetViewSet(viewsets.ModelViewSet):
@@ -55,7 +60,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-
+    #benchmark ednpoint
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -84,6 +89,69 @@ class PortfolioViewSet(viewsets.ModelViewSet):
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(result)
+    
+    #rolling metrics endpoint 
+    @extend_schema(
+    parameters=[
+        OpenApiParameter(
+            name="window",
+            description="Rolling window size in trading days, for example 30",
+            required=False,
+            type=int,
+        ),
+        OpenApiParameter(
+            name="policy",
+            description="Missing data policy: intersection or forward_fill",
+            required=False,
+            type=str,
+        ),
+        OpenApiParameter(
+            name="rf",
+            description="Risk free rate used in rolling Sharpe ratio",
+            required=False,
+            type=float,
+        ),
+    ]
+)
+
+    @action(detail=True, methods=["get"])
+    def rolling_metrics(self, request, pk=None):
+        portfolio = self.get_object()
+
+        window = request.query_params.get("window", 30)
+        policy = request.query_params.get("policy", "intersection")
+        rf = request.query_params.get("rf", 0.02)
+
+        try:
+            window = int(window)
+            rf = float(rf)
+        except ValueError:
+            return Response(
+                {"error": "window must be an integer and rf must be numeric."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = calculate_rolling_metrics(
+                portfolio,
+                window=window,
+                policy=policy,
+                risk_free_rate=rf,
+            )
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(
+            {
+                "portfolio_id": portfolio.id,
+                "window": window,
+                "risk_free_rate": rf,
+                "missing_data_policy": policy,
+                "results": result,
+            }
+        )
+
+
 
 
 
