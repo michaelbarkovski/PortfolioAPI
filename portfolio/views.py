@@ -14,6 +14,8 @@ from .serializers import (
     HoldingSerializer,
     RegisterSerializer,
 )
+from portfolio.services.analytics import benchmark_comparison
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 class AssetViewSet(viewsets.ModelViewSet):
     queryset = Asset.objects.all().order_by("identifier")
@@ -26,13 +28,14 @@ class PriceViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 class PortfolioViewSet(viewsets.ModelViewSet):
-    #queryset = Portfolio.objects.all().order_by("-date_created")
+    queryset = Portfolio.objects.all().order_by("-date_created")
     serializer_class = PortfolioSerializer
     permission_classes = [IsAuthenticated]
 
     #restrict portfoloioviewset to the logged in user 
     def get_queryset(self):
         return Portfolio.objects.filter(user=self.request.user).order_by("-date_created")
+
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
@@ -52,8 +55,40 @@ class PortfolioViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="benchmark",
+                description="Benchmark asset identifier, for example SPY",
+                required=True,
+                type=str,
+            )
+        ]
+    )
+    @action(detail=True, methods=["get"])
+    def benchmark(self, request, pk=None):
+        portfolio = self.get_object()
+
+        benchmark = request.query_params.get("benchmark")
+
+        if not benchmark:
+            return Response(
+                {"error": "Benchmark identifier required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            result = benchmark_comparison(portfolio, benchmark)
+        except ValueError as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(result)
+
+
+
 class HoldingViewSet(viewsets.ModelViewSet):
-    #queryset = Holding.objects.all().select_related("portfolio", "asset").order_by("portfolio__name", "asset__identifier")
+    queryset = Holding.objects.all().select_related("portfolio", "asset").order_by("portfolio__name", "asset__identifier")
     serializer_class = HoldingSerializer
     permission_classes = [IsAuthenticated]
     

@@ -44,7 +44,10 @@ def ingest_asset_prices(identifier: str) -> dict:
     Upserts (if a asset, date, row exists, update it, if not, create it) daily closing prices for the given asset identifer into the databse 
     returns summary dict with created and updated counts 
     '''
-    asset = Asset.objects.get(identifier=identifier) #ensure asset exists 
+    asset, created = Asset.objects.get_or_create(
+    identifier=identifier,
+    defaults={"name": identifier}
+    )
     series = fetch_daily_prices(identifier) #fetch raw daily series data from ALpha Vantage
     created = 0
     updated = 0
