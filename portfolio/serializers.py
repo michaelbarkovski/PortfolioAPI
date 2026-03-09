@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Asset, Price, Portfolio, Holding
 from decimal import Decimal
 from rest_framework import serializers
+from django.contrib.auth.models import User
 
 
 class AssetSerializer(serializers.ModelSerializer):
@@ -51,3 +52,34 @@ class PortfolioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Portfolio
         fields = ["id", "user", "name", "date_created"]
+
+
+class RegisterSerializer(serializers.ModelSerializer): #serializer for user registration
+    password = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "email", "password", "password_confirm"]
+
+    def validate(self, attrs): #checks that both passwords match
+        if attrs["password"] != attrs["password_confirm"]:
+            raise serializers.ValidationError({"password_confirm": "Passwords do not match."})
+
+        if User.objects.filter(username=attrs["username"]).exists():
+            raise serializers.ValidationError({"username": "This username is already taken."})
+
+        email = attrs.get("email")
+        if email and User.objects.filter(email=email).exists():
+            raise serializers.ValidationError({"email": "This email is already in use."})
+
+        return attrs
+
+    def create(self, validated_data):
+        validated_data.pop("password_confirm")
+        user = User.objects.create_user( #proper password hashing 
+            username=validated_data["username"],
+            email=validated_data.get("email", ""),
+            password=validated_data["password"],
+        )
+        return user

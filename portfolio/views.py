@@ -4,7 +4,7 @@ from .models import Asset, Price, Portfolio, Holding
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import status
+from rest_framework import status, generics, permissions
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from .services.analytics import calculate_portfolio_metrics
 from .serializers import (
@@ -12,6 +12,7 @@ from .serializers import (
     PriceSerializer,
     PortfolioSerializer,
     HoldingSerializer,
+    RegisterSerializer,
 )
 
 class AssetViewSet(viewsets.ModelViewSet):
@@ -58,3 +59,25 @@ class HoldingViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         return Holding.objects.filter(portfolio__user=self.request.user) #updated so that users only access their own holdings 
+
+class RegisterView(generics.CreateAPIView):
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        return Response(
+            {
+                "message": "User registered successfully.",
+                "user": {
+                    "id": user.id,
+                    "username": user.username,
+                    "email": user.email,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
