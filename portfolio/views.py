@@ -47,19 +47,24 @@ class PortfolioViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["get"])
     def metrics(self, request, pk=None):
         portfolio = self.get_object()
-        #read query paremters
-        missing_data_policy = request.query_params.get("policy", "intersection") 
-        risk_free_rate = float(request.query_params.get("rf", 0.02))
+        missing_data_policy = request.query_params.get("policy", "intersection")
+        
         try:
-            results = calculate_portfolio_metrics(portfolio, missing_data_policy, risk_free_rate=risk_free_rate,)
-            return Response(results, status=status.HTTP_200_OK)
+            risk_free_rate = float(request.query_params.get("rf", 0.02))
+        except ValueError:
+            return Response(
+                {"error": "rf must be a valid number."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
+        try:
+            results = calculate_portfolio_metrics(portfolio, missing_data_policy, risk_free_rate=risk_free_rate)
+            return Response(results, status=status.HTTP_200_OK)
         except ValueError as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
     #benchmark ednpoint
     @extend_schema(
         parameters=[

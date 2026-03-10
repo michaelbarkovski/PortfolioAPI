@@ -24,7 +24,9 @@ class HoldingSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         portfolio = data.get("portfolio") or getattr(self.instance, "portfolio", None)
         weight = data.get("weight") if "weight" in data else getattr(self.instance, "weight", None)
-
+        if weight is not None and weight < 0:
+            raise serializers.ValidationError("Weight cannot be negative.")
+            
         if portfolio is None or weight is None:
             return data
 
