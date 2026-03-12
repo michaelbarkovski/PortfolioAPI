@@ -177,3 +177,12 @@ This will call all 6 tools in sequence and print the results to the terminal, co
 - **Username:** testuser
 - **Password:** testpass123
 - **Token endpoint:** https://mikeb04.pythonanywhere.com/api/token/
+- 
+
+## API Documentation
+
+Full API documentation is available as a PDF in the repository: [api_documentation.pdf](api_documentation.pdf)
+
+Live interactive version: https://mikeb04.pythonanywhere.com/api/docs/
+
+
