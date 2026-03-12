@@ -114,7 +114,7 @@ def calculate_portfolio_metrics(portfolio, missing_data_policy="intersection", r
 
     sharpe = (annual_return - risk_free_rate) / annual_vol if annual_vol != 0 else 0
 
-    # Max drawdown
+    #max drawdown
     cumulative = 1
     peak = 1
     max_drawdown = 0
@@ -203,7 +203,7 @@ def benchmark_comparison(portfolio, benchmark_identifier, policy="intersection")
 
 def calculate_rolling_metrics(portfolio, window=30, policy="intersection", risk_free_rate=0.02):
     """
-    Compute rolling portfolio analytics over a moving window.
+    compute rolling portfolio analytics over a moving window.
     returns a list of date-based rolling metrics
     """
 
@@ -218,11 +218,11 @@ def calculate_rolling_metrics(portfolio, window=30, policy="intersection", risk_
     if len(portfolio_df) < window:
         raise ValueError("Not enough return observations for the selected rolling window.")
 
-    # rolling mean and rolling standard deviation of daily returns
+    #rolling mean and rolling standard deviation of daily returns
     portfolio_df["rolling_mean_daily"] = portfolio_df["return"].rolling(window=window).mean()
     portfolio_df["rolling_std_daily"] = portfolio_df["return"].rolling(window=window).std()
 
-    # convert daily measures into annualised measures
+    #convert daily measures into annualised measures
     portfolio_df["rolling_annualised_return"] = (
         portfolio_df["rolling_mean_daily"] * TRADING_DAYS_PER_YEAR
     )
@@ -230,7 +230,7 @@ def calculate_rolling_metrics(portfolio, window=30, policy="intersection", risk_
         portfolio_df["rolling_std_daily"] * np.sqrt(TRADING_DAYS_PER_YEAR)
     )
 
-    # sharpe ratio for each rolling window
+    #sharpe ratio for each rolling window
     portfolio_df["rolling_sharpe_ratio"] = np.where(
         portfolio_df["rolling_annualised_volatility"] != 0,
         (portfolio_df["rolling_annualised_return"] - risk_free_rate)

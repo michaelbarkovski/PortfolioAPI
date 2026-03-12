@@ -41,7 +41,7 @@ def fetch_daily_prices(identifier: str) -> dict:
 
 def ingest_asset_prices(identifier: str) -> dict:
     '''
-    Upserts (if a asset, date, row exists, update it, if not, create it) daily closing prices for the given asset identifer into the databse 
+    Upserts which means (if a asset, date, row exists, update it, if not, create it)daily closing prices for the given asset identifer into the databse 
     returns summary dict with created and updated counts 
     '''
     asset, created = Asset.objects.get_or_create(

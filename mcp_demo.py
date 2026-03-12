@@ -1,22 +1,11 @@
-"""
-MCP Tools Demo Script
-======================
-Demonstrates all 6 MCP tools by calling them directly against your live API.
-Use this to verify everything works before your presentation.
-
-Usage:
-    # Against local server
-    python mcp_demo.py
-
-    # Against PythonAnywhere with auth
-    PORTFOLIO_API_BASE=https://mikeb04.pythonanywhere.com \
-    PORTFOLIO_API_TOKEN=<your_jwt_token> \
-    python mcp_demo.py
-"""
-
 import os
 import json
 import requests
+
+"""
+MCP Tools Demo Script
+demonstrates all 6 MCP tools by calling them directly against the live API
+"""
 
 API_BASE = os.getenv("PORTFOLIO_API_BASE", "http://127.0.0.1:8000").rstrip("/")
 API_TOKEN = os.getenv("PORTFOLIO_API_TOKEN", "")
@@ -41,11 +30,10 @@ def section(title):
 
 def show(label, status, data):
     print(f"\n[{label}]  HTTP {status}")
-    print(json.dumps(data, indent=2, default=str)[:800])  # truncate long output
+    print(json.dumps(data, indent=2, default=str)[:800])  
 
 
-# ── Run all tools ─────────────────────────────────────────────────────────────
-
+#run all tools
 section("TOOL 1: list_assets")
 status, data = get("/api/assets/")
 show("list_assets", status, data)
@@ -54,7 +42,7 @@ section("TOOL 2: list_portfolios")
 status, data = get("/api/portfolios/")
 show("list_portfolios", status, data)
 
-# Attempt to use the first portfolio found
+#use the first portfolio found
 portfolios = data if isinstance(data, list) else data.get("results", [])
 if portfolios:
     pid = portfolios[0]["id"]

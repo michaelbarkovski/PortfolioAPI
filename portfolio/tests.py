@@ -1,10 +1,3 @@
-"""
-Portfolio Analytics API - Test Suite
-=====================================
-Run with: python manage.py test portfolio.tests
-Or with pytest: pytest portfolio/tests.py -v
-"""
-
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
@@ -21,10 +14,7 @@ from portfolio.services.analytics import (
 import datetime
 
 
-# ─────────────────────────────────────────────
-# HELPERS
-# ─────────────────────────────────────────────
-
+#Helpers
 def make_user(username="testuser", password="testpass123"):
     return User.objects.create_user(username=username, password=password)
 
@@ -34,10 +24,6 @@ def make_asset(identifier="AAPL", name="Apple Inc"):
 
 
 def make_prices(asset, prices):
-    """
-    prices: list of (date_str, closing_price) tuples
-    e.g. [("2024-01-01", 100.0), ("2024-01-02", 102.0)]
-    """
     for date_str, price in prices:
         Price.objects.create(
             asset=asset,
@@ -66,9 +52,7 @@ def get_jwt_token(client, username="testuser", password="testpass123"):
     return response.data["access"]
 
 
-# ─────────────────────────────────────────────
 # 1. MODEL TESTS
-# ─────────────────────────────────────────────
 
 class AssetModelTest(TestCase):
 
@@ -144,10 +128,7 @@ class HoldingModelTest(TestCase):
         with self.assertRaises(IntegrityError):
             Holding.objects.create(portfolio=portfolio, asset=asset, weight=Decimal("0.3"))
 
-
-# ─────────────────────────────────────────────
 # 2. ANALYTICS UNIT TESTS
-# ─────────────────────────────────────────────
 
 class ComputePortfolioReturnsTest(TestCase):
 
@@ -165,13 +146,11 @@ class ComputePortfolioReturnsTest(TestCase):
 
     def test_returns_correct_length(self):
         df = compute_portfolio_returns(self.portfolio)
-        # 4 prices → 3 return observations
         self.assertEqual(len(df), 3)
 
     def test_returns_correct_values(self):
         df = compute_portfolio_returns(self.portfolio)
         first_return = round(df.iloc[0]["return"], 6)
-        # (102/100) - 1 = 0.02
         self.assertAlmostEqual(first_return, 0.02, places=5)
 
     def test_raises_on_empty_portfolio(self):
@@ -201,7 +180,6 @@ class CalculatePortfolioMetricsTest(TestCase):
     def setUp(self):
         self.user = make_user()
         self.asset = make_asset("AAPL")
-        # Use enough price points for meaningful stats
         prices = [(f"2024-01-{str(i).zfill(2)}", 100 + i) for i in range(1, 31)]
         make_prices(self.asset, prices)
         self.portfolio = make_portfolio(self.user)
@@ -219,7 +197,6 @@ class CalculatePortfolioMetricsTest(TestCase):
     def test_custom_risk_free_rate(self):
         result_default = calculate_portfolio_metrics(self.portfolio, risk_free_rate=0.02)
         result_high_rf = calculate_portfolio_metrics(self.portfolio, risk_free_rate=0.10)
-        # Higher rf → lower Sharpe
         self.assertGreater(result_default["sharpe_ratio"], result_high_rf["sharpe_ratio"])
 
     def test_max_drawdown_is_non_positive(self):
@@ -228,7 +205,6 @@ class CalculatePortfolioMetricsTest(TestCase):
 
     def test_observations_count(self):
         result = calculate_portfolio_metrics(self.portfolio)
-        # 30 prices → 29 return observations
         self.assertEqual(result["observations"], 29)
 
     def test_policy_reflected_in_output(self):
@@ -301,9 +277,7 @@ class RollingMetricsTest(TestCase):
             calculate_rolling_metrics(self.portfolio, window=1)
 
 
-# ─────────────────────────────────────────────
 # 3. AUTHENTICATION API TESTS
-# ─────────────────────────────────────────────
 
 class AuthTests(APITestCase):
 
@@ -353,9 +327,7 @@ class AuthTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
-# ─────────────────────────────────────────────
 # 4. PORTFOLIO ENDPOINT TESTS
-# ─────────────────────────────────────────────
 
 class PortfolioEndpointTests(APITestCase):
 
@@ -401,9 +373,7 @@ class PortfolioEndpointTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
-# ─────────────────────────────────────────────
 # 5. ASSET & PRICE ENDPOINT TESTS
-# ─────────────────────────────────────────────
 
 class AssetEndpointTests(APITestCase):
 
@@ -433,10 +403,7 @@ class AssetEndpointTests(APITestCase):
         response = self.client.post("/api/assets/", {"identifier": "AMZN"}, format="json")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-
-# ─────────────────────────────────────────────
 # 6. HOLDINGS VALIDATION TESTS
-# ─────────────────────────────────────────────
 
 class HoldingValidationTests(APITestCase):
 
@@ -465,7 +432,7 @@ class HoldingValidationTests(APITestCase):
         response = self.client.post("/api/holdings/", {
             "portfolio": self.portfolio.id,
             "asset": self.asset2.id,
-            "weight": "0.50000",  # total would be 1.3
+            "weight": "0.50000", 
         }, format="json")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
@@ -478,10 +445,7 @@ class HoldingValidationTests(APITestCase):
         }, format="json")
         self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_500_INTERNAL_SERVER_ERROR])
 
-
-# ─────────────────────────────────────────────
 # 7. METRICS ENDPOINT TESTS
-# ─────────────────────────────────────────────
 
 class MetricsEndpointTests(APITestCase):
 
@@ -545,10 +509,7 @@ class MetricsEndpointTests(APITestCase):
         response = self.client.get(f"/api/portfolios/{self.portfolio.id}/benchmark/?benchmark=FAKE")
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-
-# ─────────────────────────────────────────────
 # 8. ANALYTICS EDGE CASE TESTS
-# ─────────────────────────────────────────────
 
 class AnalyticsEdgeCaseTests(TestCase):
 
@@ -596,8 +557,6 @@ class AnalyticsEdgeCaseTests(TestCase):
         make_prices(self.asset, [(f"2024-01-{str(i).zfill(2)}", 100 + i) for i in range(1, 11)])
         portfolio = make_portfolio(self.user)
         make_holding(portfolio, self.asset, 1.0)
-        # 10 prices = 9 returns, window=9 produces 1 result not an error
-        # window must be >= observations to trigger the error
         with self.assertRaises(ValueError):
             calculate_rolling_metrics(portfolio, window=500)
 
@@ -629,11 +588,7 @@ class AnalyticsEdgeCaseTests(TestCase):
         with self.assertRaises(ValueError):
             benchmark_comparison(portfolio, "BENCH2")
 
-
-# ─────────────────────────────────────────────
 # 9. HOLDING VALIDATION EDGE CASES
-# ─────────────────────────────────────────────
-
 class HoldingValidationEdgeCaseTests(APITestCase):
 
     def setUp(self):
@@ -660,7 +615,6 @@ class HoldingValidationEdgeCaseTests(APITestCase):
             "asset": self.asset.id,
             "weight": "0.00000",
         }, format="json")
-        # Documents current behaviour — change assertion if you add zero-weight validation
         self.assertIn(response.status_code, [status.HTTP_201_CREATED, status.HTTP_400_BAD_REQUEST])
 
     def test_negative_weight_behaviour(self):
@@ -693,10 +647,7 @@ class HoldingValidationEdgeCaseTests(APITestCase):
         }, format="json")
         self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_403_FORBIDDEN])
 
-
-# ─────────────────────────────────────────────
 # 10. OWNERSHIP SECURITY TESTS
-# ─────────────────────────────────────────────
 
 class OwnershipSecurityTests(APITestCase):
 
@@ -746,11 +697,7 @@ class OwnershipSecurityTests(APITestCase):
         response = self.client.get("/api/portfolios/")
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
-
-# ─────────────────────────────────────────────
 # 11. API PARAMETER VALIDATION TESTS
-# ─────────────────────────────────────────────
-
 class APIParameterValidationTests(APITestCase):
 
     def setUp(self):

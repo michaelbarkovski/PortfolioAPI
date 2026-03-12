@@ -22,6 +22,7 @@ from portfolio.services.analytics import (
 )
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
+#asset and Price viewsets are read-only for unauthenticated users
 class AssetViewSet(viewsets.ModelViewSet):
     queryset = Asset.objects.all().order_by("identifier")
     serializer_class = AssetSerializer
@@ -32,6 +33,7 @@ class PriceViewSet(viewsets.ModelViewSet):
     serializer_class = PriceSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+# portfolio viewset requires authentication for all operations
 class PortfolioViewSet(viewsets.ModelViewSet):
     queryset = Portfolio.objects.all().order_by("-date_created")
     serializer_class = PortfolioSerializer
@@ -41,14 +43,17 @@ class PortfolioViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Portfolio.objects.filter(user=self.request.user).order_by("-date_created")
 
+    #automatically assign the portfolio to the logged in user on creation
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+    #metrics endpoint — returns annualised return, volatility, Sharpe ratio, and max drawdown
     @action(detail=True, methods=["get"])
     def metrics(self, request, pk=None):
         portfolio = self.get_object()
         missing_data_policy = request.query_params.get("policy", "intersection")
         
+        #validate rf parameter before passing to analytics engine
         try:
             risk_free_rate = float(request.query_params.get("rf", 0.02))
         except ValueError:
@@ -65,7 +70,8 @@ class PortfolioViewSet(viewsets.ModelViewSet):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-    #benchmark ednpoint
+            
+    #benchmark endpoint
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -82,6 +88,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
 
         benchmark = request.query_params.get("benchmark")
 
+        #return 400 if benchmark parameter is missing
         if not benchmark:
             return Response(
                 {"error": "Benchmark identifier required."},
@@ -127,6 +134,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
         policy = request.query_params.get("policy", "intersection")
         rf = request.query_params.get("rf", 0.02)
 
+        # validate window and rf before passing to analytics engine
         try:
             window = int(window)
             rf = float(rf)
@@ -156,10 +164,7 @@ class PortfolioViewSet(viewsets.ModelViewSet):
             }
         )
 
-
-
-
-
+#holdings filtered to only return records belonging to the authenticated user's portfolios
 class HoldingViewSet(viewsets.ModelViewSet):
     queryset = Holding.objects.all().select_related("portfolio", "asset").order_by("portfolio__name", "asset__identifier")
     serializer_class = HoldingSerializer
@@ -168,6 +173,7 @@ class HoldingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Holding.objects.filter(portfolio__user=self.request.user) #updated so that users only access their own holdings 
 
+# open registration endpoint — no authentication required
 class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
@@ -188,4 +194,3 @@ class RegisterView(generics.CreateAPIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
